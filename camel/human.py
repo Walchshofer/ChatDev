@@ -127,3 +127,28 @@ class Human:
         self.display_options(messages)
         human_input = self.get_input()
         return self.parse_input(human_input, meta_chat_message)
+    
+    # def reduce_step(self,
+    #                 messages: Sequence[BaseMessage]) -> ChatAgentResponse:
+    #     r"""Performs one step of the conversation by displaying options to the
+    #     user, getting their input, and parsing their choice.
+    # 
+    #     Args:
+    #         messages (Sequence[BaseMessage]): A list of BaseMessage objects.
+    # 
+    #     Returns:
+    #         ChatAgentResponse: A `ChatAgentResponse` object representing the
+    #             user's choice.
+    #     """
+    #     meta_chat_message = BaseMessage(
+    #         role_name=messages[0].role_name,
+    #         role_type=messages[0].role_type,
+    #         meta_dict=messages[0].meta_dict,
+    #         content="",
+    #     )
+    #     self.display_options(messages)
+    #     human_input = self.get_input()
+    #     content = self.parse_input(human_input)
+    #     message = meta_chat_message.create_new_instance(content)
+    #     return ChatAgentResponse([message], terminated=False, info={})
+

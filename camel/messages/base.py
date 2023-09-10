@@ -22,7 +22,7 @@ from camel.messages import (
     OpenAIUserMessage,
 )
 from camel.prompts import CodePrompt, TextPrompt
-from camel.typing import ModelType, RoleType
+from camel.camel_typing import ModelType, RoleType
 
 
 @dataclass

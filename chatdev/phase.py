@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 
 from camel.agents import RolePlaying
 from camel.messages import ChatMessage
-from camel.typing import TaskType, ModelType
+from camel.camel_typing import TaskType, ModelType
 from chatdev.chat_env import ChatEnv
 from chatdev.statistics import get_info
 from chatdev.utils import log_and_print_online, log_arguments

@@ -14,7 +14,7 @@
 import inspect
 from typing import Any, Callable, Dict, Optional, Set, Tuple, TypeVar, Union
 
-from camel.typing import RoleType
+from camel.camel_typing import RoleType
 
 T = TypeVar('T')
 

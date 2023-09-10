@@ -17,7 +17,7 @@ from colorama import Fore
 
 from camel.agents import BaseToolAgent, ChatAgent, HuggingFaceToolAgent
 from camel.messages import ChatMessage, SystemMessage
-from camel.typing import ModelType
+from camel.camel_typing import ModelType
 from camel.utils import print_text_animated
 
 

@@ -15,7 +15,7 @@ from dataclasses import dataclass
 from typing import Dict, Optional
 
 from camel.messages import BaseMessage
-from camel.typing import RoleType
+from camel.camel_typing import RoleType
 
 
 @dataclass

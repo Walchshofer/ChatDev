@@ -22,7 +22,7 @@ from camel.agents import BaseAgent
 from camel.configs import ChatGPTConfig
 from camel.messages import ChatMessage, MessageType, SystemMessage
 from camel.model_backend import ModelBackend, ModelFactory
-from camel.typing import ModelType, RoleType
+from camel.camel_typing import ModelType, RoleType
 from camel.utils import (
     get_model_token_limit,
     num_tokens_from_messages,
@@ -170,7 +170,26 @@ class ChatAgent(BaseAgent):
                 containing the output messages, a boolean indicating whether
                 the chat session has terminated, and information about the chat
                 session.
+        """    @retry(wait=wait_exponential(min=5, max=60), stop=stop_after_attempt(5))
+    @openai_api_key_required
+    def step(
+            self,
+            input_message: ChatMessage,
+    ) -> ChatAgentResponse:
+        r"""Performs a single step in the chat session by generating a response
+        to the input message.
+
+        Args:
+            input_message (ChatMessage): The input message to the agent.
+
+        Returns:
+            ChatAgentResponse: A struct containing the output messages, a boolean 
+            indicating whether the chat session has terminated, and information 
+            about the chat session.
         """
+        # DEBUG: Print the model being used
+        print(f"chat_agent DEBUG: Model being used: {self.model}")
+        
         messages = self.update_messages(input_message)
         if self.message_window_size is not None and len(
                 messages) > self.message_window_size:
@@ -178,15 +197,24 @@ class ChatAgent(BaseAgent):
                         ] + messages[-self.message_window_size:]
         openai_messages = [message.to_openai_message() for message in messages]
         num_tokens = num_tokens_from_messages(openai_messages, self.model)
-
-        # for openai_message in openai_messages:
-        #     # print("{}\t{}".format(openai_message.role, openai_message.content))
-        #     print("{}\t{}\t{}".format(openai_message["role"], hash(openai_message["content"]), openai_message["content"][:60].replace("\n", "")))
-        # print()
-
+        
+        # DEBUG: Print the total number of tokens
+        print(f"chat_agent DEBUG: Total number of tokens: {num_tokens}")
+        
         output_messages: Optional[List[ChatMessage]]
         info: Dict[str, Any]
 
+        if num_tokens >= self.model_token_limit:
+            self.terminated = True
+            output_messages = []
+            info = self.get_info(
+                None,
+                None,
+                ["max_tokens_exceeded_by_camel"],
+                num_tokens,
+            )
+            return ChatAgentResponse(output_messages, self.terminated, info)
+        
         if num_tokens < self.model_token_limit:
             response = self.model_backend.run(messages=openai_messages)
             if not isinstance(response, dict):
@@ -203,20 +231,8 @@ class ChatAgent(BaseAgent):
                 num_tokens,
             )
 
-            # TODO strict <INFO> check, only in the beginning of the line
-            # if "<INFO>" in output_messages[0].content:
             if output_messages[0].content.split("\n")[-1].startswith("<INFO>"):
                 self.info = True
-        else:
-            self.terminated = True
-            output_messages = []
-
-            info = self.get_info(
-                None,
-                None,
-                ["max_tokens_exceeded_by_camel"],
-                num_tokens,
-            )
 
         return ChatAgentResponse(output_messages, self.terminated, info)
 

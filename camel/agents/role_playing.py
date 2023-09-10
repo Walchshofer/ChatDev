@@ -22,7 +22,7 @@ from camel.agents import (
 from camel.agents.chat_agent import ChatAgentResponse
 from camel.messages import ChatMessage, UserChatMessage
 from camel.messages import SystemMessage
-from camel.typing import ModelType, RoleType, TaskType, PhaseType
+from camel.camel_typing import ModelType, RoleType, TaskType, PhaseType
 from chatdev.utils import log_arguments, log_and_print_online
 
 

@@ -11,21 +11,40 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # =========== Copyright 2023 @ CAMEL-AI.org. All Rights Reserved. ===========
+import inspect
 import os
 import re
+import time
 import zipfile
 from functools import wraps
-from typing import Any, Callable, List, Optional, Set, TypeVar
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    List,
+    Optional,
+    Set,
+    Tuple,
+    TypeVar,
+    cast,
+)
 
 import requests
 import tiktoken
 
 from camel.messages import OpenAIMessage
-from camel.typing import ModelType, TaskType
+from camel.camel_typing import ModelType, TaskType
 
 F = TypeVar('F', bound=Callable[..., Any])
 
-import time
+from dotenv import load_dotenv
+import os
+
+# Load the .env file
+load_dotenv()
+
+# Retrieve the API key from environment variables
+openai_api_key = os.getenv("OPENAI_API_KEY")
 
 
 def count_tokens_openai_chat_models(
@@ -82,10 +101,7 @@ def num_tokens_from_messages(
     except KeyError:
         encoding = tiktoken.get_encoding("cl100k_base")
 
-    if model in {
-        ModelType.GPT_3_5_TURBO, ModelType.GPT_4, ModelType.GPT_4_32k,
-        ModelType.STUB
-    }:
+    if model.is_openai or model.is_open_source:  # Updated to handle all models
         return count_tokens_openai_chat_models(messages, encoding)
     else:
         raise NotImplementedError(
@@ -107,16 +123,8 @@ def get_model_token_limit(model: ModelType) -> int:
     Returns:
         int: The maximum token limit for the given model.
     """
-    if model == ModelType.GPT_3_5_TURBO:
-        return 16384
-    elif model == ModelType.GPT_4:
-        return 8192
-    elif model == ModelType.GPT_4_32k:
-        return 32768
-    elif model == ModelType.STUB:
-        return 4096
-    else:
-        raise ValueError("Unknown model type")
+    return model.token_limit  # Updated to use the token_limit property from your updated ModelType enum
+
 
 
 def openai_api_key_required(func: F) -> F:
@@ -218,3 +226,89 @@ def download_tasks(task: TaskType, folder_path: str) -> None:
 
     # Delete the zip file
     os.remove(zip_file_path)
+
+def parse_doc(func: Callable) -> Dict[str, Any]:
+    r"""Parse the docstrings of a function to extract the function name,
+    description and parameters.
+
+    Args:
+        func (Callable): The function to be parsed.
+    Returns:
+        Dict[str, Any]: A dictionary with the function's name,
+            description, and parameters.
+    """
+
+    doc = inspect.getdoc(func)
+    if not doc:
+        raise ValueError(
+            f"Invalid function {func.__name__}: no docstring provided.")
+
+    properties = {}
+    required = []
+
+    parts = re.split(r'\n\s*\n', doc)
+    func_desc = parts[0].strip()
+
+    args_section = next((p for p in parts if 'Args:' in p), None)
+    if args_section:
+        args_descs: List[Tuple[str, str, str, ]] = re.findall(
+            r'(\w+)\s*\((\w+)\):\s*(.*)', args_section)
+        properties = {
+            name.strip(): {
+                'type': type,
+                'description': desc
+            }
+            for name, type, desc in args_descs
+        }
+        for name in properties:
+            required.append(name)
+
+    # Parameters from the function signature
+    sign_params = list(inspect.signature(func).parameters.keys())
+    if len(sign_params) != len(required):
+        raise ValueError(
+            f"Number of parameters in function signature ({len(sign_params)})"
+            f" does not match that in docstring ({len(required)}).")
+
+    for param in sign_params:
+        if param not in required:
+            raise ValueError(f"Parameter '{param}' in function signature"
+                             " is missing in the docstring.")
+
+    parameters = {
+        "type": "object",
+        "properties": properties,
+        "required": required,
+    }
+
+    # Construct the function dictionary
+    function_dict = {
+        "name": func.__name__,
+        "description": func_desc,
+        "parameters": parameters,
+    }
+
+    return function_dict
+
+
+def get_task_list(task_response: str) -> List[str]:
+    r"""Parse the response of the Agent and return task list.
+
+    Args:
+        task_response (str): The string response of the Agent.
+
+    Returns:
+        List[str]: A list of the string tasks.
+    """
+
+    new_tasks_list = []
+    task_string_list = task_response.strip().split('\n')
+    # each task starts with #.
+    for task_string in task_string_list:
+        task_parts = task_string.strip().split(".", 1)
+        if len(task_parts) == 2:
+            task_id = ''.join(s for s in task_parts[0] if s.isnumeric())
+            task_name = re.sub(r'[^\w\s_]+', '', task_parts[1]).strip()
+            if task_name.strip() and task_id.isnumeric():
+                new_tasks_list.append(task_name)
+    return new_tasks_list
