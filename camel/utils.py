@@ -39,13 +39,31 @@ F = TypeVar('F', bound=Callable[..., Any])
 
 from dotenv import load_dotenv
 import os
+import logging
 
 # Load the .env file
 load_dotenv()
 
 # Retrieve the API key from environment variables
 openai_api_key = os.getenv("OPENAI_API_KEY")
+server_url = os.getenv('TEXTGEN_API_URL')
 
+def fetch_model_type_from_server(server_url):
+    """Fetch the model type from the server.
+
+    Args:
+        server_url (str): The server URL where the model type information is hosted.
+
+    Returns:
+        str: The model type if fetched successfully, otherwise None.
+    """
+    response = requests.get(server_url)
+    if response.status_code == 200:
+        model_type = response.json()['result']
+        logging.debug(f"Fetched model type from server: {model_type}")
+        return model_type
+    else:
+        logging.error(f"Failed to fetch model type from server. Status code: {response.status_code}")
 
 def count_tokens_openai_chat_models(
         messages: List[OpenAIMessage],
@@ -125,7 +143,32 @@ def get_model_token_limit(model: ModelType) -> int:
     """
     return model.token_limit  # Updated to use the token_limit property from your updated ModelType enum
 
+def get_selected_model():
+    """Fetch the selected model and its token limit.
 
+    Returns:
+        tuple: A tuple containing the selected model and its token limit. 
+               Returns (None, 2048) if the model is not found.
+    """
+    model_name = fetch_model_type_from_server(server_url)
+    
+    model_type = None
+    max_tokens = None
+
+    for model in ModelType:
+        if model.value == model_name:
+            model_type = model.name
+            max_tokens = get_model_token_limit(model)
+            break
+
+    if model_type and max_tokens:
+        logging.debug(f"Found Model Type: {model_type}")
+        logging.debug(f"Max Tokens: {max_tokens}")
+        return model_type, max_tokens
+    else:
+        logging.warning("Model not found.")
+        return 'GPT_3_5_TURBO', 2048
+    
 
 def openai_api_key_required(func: F) -> F:
     r"""Decorator that checks if the OpenAI API key is available in the

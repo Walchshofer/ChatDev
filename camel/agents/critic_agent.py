@@ -15,13 +15,11 @@ import copy
 import random
 import warnings
 from typing import Any, Dict, Optional, Sequence
-
-from colorama import Fore
-
 from camel.agents import ChatAgent
 from camel.messages import ChatMessage, SystemMessage
 from camel.camel_typing import ModelType
-from camel.utils import get_first_int, print_text_animated
+from camel.utils import get_first_int, print_text_animated, get_selected_model, get_model_token_limit  # <-- Updated import
+from colorama import Fore
 
 
 class CriticAgent(ChatAgent):
@@ -31,7 +29,8 @@ class CriticAgent(ChatAgent):
         system_message (SystemMessage): The system message for the critic
             agent.
         model (ModelType, optional): The LLM model to use for generating
-            responses. (default :obj:`ModelType.GPT_3_5_TURBO`)
+            responses. If `None`, the model will be fetched from the server.
+            (default :obj:`None`)
         model_config (Any, optional): Configuration options for the LLM model.
             (default: :obj:`None`)
         message_window_size (int, optional): The maximum number of previous
@@ -47,15 +46,24 @@ class CriticAgent(ChatAgent):
     def __init__(
         self,
         system_message: SystemMessage,
-        model: ModelType = ModelType.GPT_3_5_TURBO,
+        model: Optional[ModelType] = None,  # <-- Updated to Optional
         model_config: Optional[Any] = None,
         message_window_size: int = 6,
         retry_attempts: int = 2,
         verbose: bool = False,
         logger_color: Any = Fore.MAGENTA,
     ) -> None:
-        super().__init__(system_message, model, model_config,
-                         message_window_size)
+        
+        # Fetch model from server if not provided
+        if model is None:
+            model_name, model_token_limit = get_selected_model()
+            if model_name:
+                model = ModelType[model_name]
+            else:
+                model = ModelType.GPT_3_5_TURBO  # Default model
+
+        super().__init__(system_message, model, model_config, message_window_size)
+
         self.options_dict: Dict[str, str] = dict()
         self.retry_attempts = retry_attempts
         self.verbose = verbose

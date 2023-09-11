@@ -12,14 +12,11 @@
 # limitations under the License.
 # =========== Copyright 2023 @ CAMEL-AI.org. All Rights Reserved. ===========
 from typing import Any, Dict, List, Optional, Tuple
-
-from colorama import Fore
-
 from camel.agents import BaseToolAgent, ChatAgent, HuggingFaceToolAgent
 from camel.messages import ChatMessage, SystemMessage
 from camel.camel_typing import ModelType
-from camel.utils import print_text_animated
-
+from camel.utils import print_text_animated, get_selected_model  # <-- Added get_selected_model import
+from colorama import Fore
 
 class EmbodiedAgent(ChatAgent):
     r"""Class for managing conversations of CAMEL Embodied Agents.
@@ -27,7 +24,8 @@ class EmbodiedAgent(ChatAgent):
     Args:
         system_message (SystemMessage): The system message for the chat agent.
         model (ModelType, optional): The LLM model to use for generating
-            responses. (default :obj:`ModelType.GPT_4`)
+            responses. If `None`, the model will be fetched from the server.
+            (default :obj:`None`)  # <-- Updated this line
         model_config (Any, optional): Configuration options for the LLM model.
             (default: :obj:`None`)
         message_window_size (int, optional): The maximum number of previous
@@ -43,13 +41,22 @@ class EmbodiedAgent(ChatAgent):
     def __init__(
         self,
         system_message: SystemMessage,
-        model: ModelType = ModelType.GPT_4,
+        model: Optional[ModelType] = None,  # <-- Updated to Optional
         model_config: Optional[Any] = None,
         message_window_size: Optional[int] = None,
         action_space: Optional[List[BaseToolAgent]] = None,
         verbose: bool = False,
         logger_color: Any = Fore.MAGENTA,
     ) -> None:
+        
+        # Fetch model from server if not provided
+        if model is None:
+            model_name, model_token_limit = get_selected_model()
+            if model_name:
+                model = ModelType[model_name]
+            else:
+                model = ModelType.GPT_4  # Default model
+
         default_action_space = [
             HuggingFaceToolAgent('hugging_face_tool_agent', model=model.value),
         ]

@@ -23,7 +23,7 @@ from camel.agents.chat_agent import ChatAgentResponse
 from camel.messages import ChatMessage, UserChatMessage
 from camel.messages import SystemMessage
 from camel.camel_typing import ModelType, RoleType, TaskType, PhaseType
-from chatdev.utils import log_arguments, log_and_print_online
+from chatdev.utils import log_arguments, log_and_print_online, get_selected_model
 
 
 @log_arguments
@@ -80,7 +80,7 @@ class RolePlaying:
             with_task_planner: bool = False,
             with_critic_in_the_loop: bool = False,
             critic_criteria: Optional[str] = None,
-            model_type: ModelType = ModelType.GPT_3_5_TURBO,
+            model_type: Optional[ModelType] = None,  # Change to Optional
             task_type: TaskType = TaskType.AI_SOCIETY,
             assistant_agent_kwargs: Optional[Dict] = None,
             user_agent_kwargs: Optional[Dict] = None,
@@ -94,6 +94,15 @@ class RolePlaying:
         self.with_task_specify = with_task_specify
         self.with_task_planner = with_task_planner
         self.with_critic_in_the_loop = with_critic_in_the_loop
+
+        # Fetch the selected model from the server if not provided
+        if model_type is None:
+            model_name, model_token_limit = get_selected_model()
+            if model_name:
+                model_type = ModelType[model_name]
+            else:
+                model_type = ModelType.GPT_3_5_TURBO  # Default model
+
         self.model_type = model_type
         self.task_type = task_type
 

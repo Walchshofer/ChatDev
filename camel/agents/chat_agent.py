@@ -25,6 +25,7 @@ from camel.model_backend import ModelBackend, ModelFactory
 from camel.camel_typing import ModelType, RoleType
 from camel.utils import (
     get_model_token_limit,
+    get_selected_model,
     num_tokens_from_messages,
     openai_api_key_required,
 )
@@ -87,9 +88,21 @@ class ChatAgent(BaseAgent):
         self.system_message: SystemMessage = system_message
         self.role_name: str = system_message.role_name
         self.role_type: RoleType = system_message.role_type
-        self.model: ModelType = (model if model is not None else ModelType.GPT_3_5_TURBO)
+
+        # Fetch model from server if not provided
+        if model is None:
+            model_name, model_token_limit = get_selected_model()
+            if model_name:
+                self.model = ModelType[model_name]
+                self.model_token_limit = model_token_limit
+            else:
+                self.model = ModelType.GPT_3_5_TURBO  # Default model
+                self.model_token_limit = get_model_token_limit(self.model)
+        else:
+            self.model = model
+            self.model_token_limit = get_model_token_limit(self.model)
+
         self.model_config: ChatGPTConfig = model_config or ChatGPTConfig()
-        self.model_token_limit: int = get_model_token_limit(self.model)
         self.message_window_size: Optional[int] = message_window_size
         self.model_backend: ModelBackend = ModelFactory.create(self.model, self.model_config.__dict__)
         self.terminated: bool = False
